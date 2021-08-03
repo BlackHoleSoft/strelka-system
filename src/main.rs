@@ -9,17 +9,13 @@ extern crate nix;
 extern crate framebuffer;
 
 use nix::unistd;
-use nix::mount;
 
 use framebuffer::{Framebuffer, KdMode};
 
-use libc::{waitpid, sigprocmask, sigfillset, sigset_t, signal};
-use std::os::unix::process::CommandExt;
-use std::process::Command;
-use std::mem;
-use std::ptr;
 use std::ffi::CString;
 use std::fs;
+
+use image::io::Reader as ImageReader;
 
 fn draw() {
     let mut framebuffer = Framebuffer::new("/dev/fb0").unwrap();
@@ -36,57 +32,22 @@ fn draw() {
 
     let _ = Framebuffer::set_kd_mode(KdMode::Graphics).unwrap();
 
-    let mut i = 0;
-    while i < w * bytespp * 4 {
-        frame[i * bytespp + 0] = 255u8;
-        frame[i * bytespp + 1] = 255u8;
-        frame[i * bytespp + 2] = 127u8;
+    //let img = graphics::image("strelka.jpg");
+    let img = ImageReader::open("/strelka/assets/strelka.jpg").decode();
 
-        i = i+1;
+    for i in 0..img.width() {
+        for j in 0..img.height() {
+            let px = img.get_pixel(i, j);
+            frame[j*img.width()*bytespp + i * bytespp + 0] = px.0;
+            frame[j*img.width()*bytespp + i * bytespp + 1] = px.1;
+            frame[j*img.width()*bytespp + i * bytespp + 2] = px.2;
+        }
     }
     
 
     let _ = framebuffer.write_frame(&frame);
 
-    let _ = std::io::stdin().read_line(&mut String::new());
-
-    frame = vec![0u8; line_length * h];
-
-    i = 0;
-    while i < line_length * h - 3 {
-        frame[i * bytespp + 0] = 255u8;
-        frame[i * bytespp + 1] = 0;
-        frame[i * bytespp + 2] = 127u8;
-
-        i = i+1;
-
-        if i % 100 == 0 {
-            let _ = framebuffer.write_frame(&frame);
-        }
-    }    
-
-    let _ = std::io::stdin().read_line(&mut String::new());
-
-    frame = vec![0u8; line_length * h];
-
-    i = 100 * bytespp;
-    while i < 800 * bytespp {
-        let mut j = 100 * bytespp;
-        while j < 500 {
-            frame[line_length * j + i + 0] = 255u8;
-            frame[line_length * j + i + 1] = 120u8;
-            frame[line_length * j + i + 2] = 180u8;
-            j += 1;
-            
-        }
-
-        i += bytespp;
-
-        let _ = framebuffer.write_frame(&frame);
-    }
-    let _ = framebuffer.write_frame(&frame);
-
-    let _ = std::io::stdin().read_line(&mut String::new());
+    let _ = std::io::stdin().read_line(&mut String::new());    
     let _ = Framebuffer::set_kd_mode(KdMode::Text).unwrap();
 }
 
@@ -121,26 +82,9 @@ fn draw() {
         }
 
     }
-}
-
-unsafe fn sigprocmask_allsigs(how: libc::c_int) {
-    let mut sigset = mem::uninitialized::<sigset_t>();
-    sigfillset(&mut sigset as *mut sigset_t);
-    sigprocmask(how, &sigset as *const sigset_t, ptr::null_mut() as *mut sigset_t);
-}
-
-
-unsafe fn reset_sighandlers_and_unblock_sigs() {
-    signal(libc::SIGUSR1, libc::SIG_DFL);
-    signal(libc::SIGUSR2, libc::SIG_DFL);
-    signal(libc::SIGTERM, libc::SIG_DFL);
-    signal(libc::SIGQUIT, libc::SIG_DFL);
-    signal(libc::SIGINT, libc::SIG_DFL);
-    signal(libc::SIGHUP, libc::SIG_DFL);
-    signal(libc::SIGTSTP, libc::SIG_DFL);
-    signal(libc::SIGSTOP, libc::SIG_DFL);
-    sigprocmask_allsigs(libc::SIG_UNBLOCK);
 }*/
+
+
 
 fn main() {
     println!("init");
@@ -149,10 +93,6 @@ fn main() {
         libc::putenv(CString::new("HOME=/").unwrap().into_raw());
         libc::putenv(CString::new("PATH=/sbin:/bin:/usr/sbin:/usr/bin").unwrap().into_raw());
         libc::putenv(CString::new("SHELL=/bin/sh").unwrap().into_raw());
-
-        println!("try call libc");
-        let fp = libc::abs(-10);  
-        println!("Result: {}", fp);
     }
 
     println!("try syscall");
