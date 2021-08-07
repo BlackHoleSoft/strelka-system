@@ -16,6 +16,13 @@ use std::ffi::CString;
 use std::fs;
 
 use image::io::Reader as ImageReader;
+use image::ImageResult;
+use image::DynamicImage;
+use image::GenericImageView;
+
+fn get_logo_image() -> ImageResult<DynamicImage> {
+    ImageReader::open("/strelka/assets/strelka.jpg")?.decode()
+}
 
 fn draw() {
     let mut framebuffer = Framebuffer::new("/dev/fb0").unwrap();
@@ -33,14 +40,14 @@ fn draw() {
     let _ = Framebuffer::set_kd_mode(KdMode::Graphics).unwrap();
 
     //let img = graphics::image("strelka.jpg");
-    let img = ImageReader::open("/strelka/assets/strelka.jpg").decode();
+    let img = get_logo_image().unwrap();
 
-    for i in 0..img.width() {
-        for j in 0..img.height() {
-            let px = img.get_pixel(i, j);
-            frame[j*img.width()*bytespp + i * bytespp + 0] = px.0;
-            frame[j*img.width()*bytespp + i * bytespp + 1] = px.1;
-            frame[j*img.width()*bytespp + i * bytespp + 2] = px.2;
+    for i in 0..img.width() as usize {
+        for j in 0..img.height() as usize {
+            let px = img.get_pixel(i as u32, j as u32);
+            frame[j*line_length + i * bytespp + 0] = px[0];
+            frame[j*line_length + i * bytespp + 1] = px[1];
+            frame[j*line_length + i * bytespp + 2] = px[2];
         }
     }
     
@@ -49,6 +56,7 @@ fn draw() {
 
     let _ = std::io::stdin().read_line(&mut String::new());    
     let _ = Framebuffer::set_kd_mode(KdMode::Text).unwrap();
+    println!("Returned to the text mode");
 }
 
 
@@ -98,12 +106,7 @@ fn main() {
     println!("try syscall");
     let pid = unistd::getpid();
     println!("called successful");
-    println!("Value: {}", pid);
-
-    println!("try read file via rust lib");
-    let contents = fs::read_to_string("/home/anton/test.txt")
-        .expect("Something went wrong reading the file");
-    println!("file contents:\n{}", contents);
+    println!("Pid: {}", pid);    
     
     draw();
 
@@ -127,7 +130,7 @@ fn main() {
     run("mknod -m 666 /dev/null c 1 3");
     run("mknod -m 660 /dev/kmsg c 1 11");
 */
-    //println!("starting loop");
+    println!("starting loop");
     loop {
         
     }
